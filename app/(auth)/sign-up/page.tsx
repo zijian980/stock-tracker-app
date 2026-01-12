@@ -1,4 +1,4 @@
-`use client`;
+'use client';
 
 import React from 'react'
 import {useForm} from "react-hook-form";
@@ -62,7 +62,7 @@ const SignUp = () => {
                 <InputField
                     name="email"
                     label="Email"
-                    placeholder="contact@jsmastery.com"
+                    placeholder="John@gmail.com"
                     register={register}
                     error={errors.email}
                     validation={{ required: 'Email name is required', pattern: /^\w+@\w+\.\w+$/, message: 'Email address is required' }}
