@@ -6,6 +6,12 @@ import { getWatchlistSymbolsByEmail } from "@/lib/actions/watchlist.actions";
 import { getNews } from "@/lib/actions/finnhub.actions";
 import { getFormattedTodayDate } from "@/lib/utils";
 
+type UserForNewsEmail = {
+    id: string;
+    email: string;
+    name: string;
+};
+
 export const sendSignUpEmail = inngest.createFunction(
     { id: 'sign-up-email' },
     { event: 'app/user.created'},
@@ -72,8 +78,8 @@ export const sendDailyNewsSummary = inngest.createFunction(
                         articles = (articles || []).slice(0, 6);
                     }
                     perUser.push({ user, articles });
-                } catch (e) {
-                    console.error('daily-news: error preparing user news', user.email, e);
+                } catch (_e) {
+                    console.error('daily-news: error preparing user news', user.email, _e);
                     perUser.push({ user, articles: [] });
                 }
             }
@@ -98,7 +104,7 @@ export const sendDailyNewsSummary = inngest.createFunction(
                     const newsContent = (part && 'text' in part ? part.text : null) || 'No market news.'
 
                     userNewsSummaries.push({ user, newsContent });
-                } catch (e) {
+                } catch {
                     console.error('Failed to summarize news for : ', user.email);
                     userNewsSummaries.push({ user, newsContent: null });
                 }
