@@ -1,9 +1,8 @@
 "use client";
-import React, { useMemo, useState } from "react";
-
-// Minimal WatchlistButton implementation to satisfy page requirements.
-// This component focuses on UI contract only. It toggles local state and
-// calls onWatchlistChange if provided. Styling hooks match globals.css.
+import React, { useMemo, useState, useTransition } from "react";
+import { addToWatchlist, removeFromWatchlist } from "@/lib/actions/watchlist.actions";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 const WatchlistButton = ({
   symbol,
@@ -12,18 +11,58 @@ const WatchlistButton = ({
   showTrashIcon = false,
   type = "button",
   onWatchlistChange,
+  userEmail,
 }: WatchlistButtonProps) => {
   const [added, setAdded] = useState<boolean>(!!isInWatchlist);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const label = useMemo(() => {
     if (type === "icon") return added ? "" : "";
     return added ? "Remove from Watchlist" : "Add to Watchlist";
   }, [added, type]);
 
-  const handleClick = () => {
+  const handleClick = async () => {
+    // If no user email, redirect to sign-in
+    if (!userEmail) {
+      toast.error("Please sign in to use watchlist");
+      router.push("/sign-in");
+      return;
+    }
+
     const next = !added;
+    const previousState = added;
+
+    // Optimistic update
     setAdded(next);
-    onWatchlistChange?.(symbol, next);
+
+    startTransition(async () => {
+      try {
+        let result;
+        if (next) {
+          // Adding to watchlist
+          result = await addToWatchlist(userEmail, symbol, company);
+        } else {
+          // Removing from watchlist
+          result = await removeFromWatchlist(userEmail, symbol);
+        }
+
+        if (result.success) {
+          toast.success(result.message);
+          onWatchlistChange?.(symbol, next);
+          router.refresh();
+        } else {
+          // Revert on failure
+          setAdded(previousState);
+          toast.error(result.message);
+        }
+      } catch (error) {
+        // Revert on error
+        setAdded(previousState);
+        toast.error("An error occurred. Please try again.");
+        console.error("Watchlist action error:", error);
+      }
+    });
   };
 
   if (type === "icon") {
@@ -33,6 +72,7 @@ const WatchlistButton = ({
         aria-label={added ? `Remove ${symbol} from watchlist` : `Add ${symbol} to watchlist`}
         className={`watchlist-icon-btn ${added ? "watchlist-icon-added" : ""}`}
         onClick={handleClick}
+        disabled={isPending}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -53,7 +93,11 @@ const WatchlistButton = ({
   }
 
   return (
-    <button className={`watchlist-btn ${added ? "watchlist-remove" : ""}`} onClick={handleClick}>
+    <button
+      className={`watchlist-btn ${added ? "watchlist-remove" : ""}`}
+      onClick={handleClick}
+      disabled={isPending}
+    >
       {showTrashIcon && added ? (
         <svg
           xmlns="http://www.w3.org/2000/svg"
